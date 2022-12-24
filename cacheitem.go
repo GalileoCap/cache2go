@@ -53,12 +53,29 @@ func NewCacheItem(key interface{}, lifeSpan time.Duration, data interface{}) *Ca
 	}
 }
 
+func (item *CacheItem) keepAliveInternal() {
+  // Careful: do not run this method unless the item-mutex is locked!
+	item.accessedOn = time.Now()
+	item.accessCount++
+}
+
 // KeepAlive marks an item to be kept for another expireDuration period.
 func (item *CacheItem) KeepAlive() {
 	item.Lock()
 	defer item.Unlock()
-	item.accessedOn = time.Now()
-	item.accessCount++
+  item.keepAliveInternal()
+}
+
+// SetLifeSpan changes an item's lifespan and returns it's previous value.
+func (item *CacheItem) SetLifeSpan(newLifeSpan time.Duration) time.Duration {
+  item.Lock()
+  defer item.Unlock()
+
+  prevLifeSpan := item.lifeSpan
+  item.lifeSpan = newLifeSpan
+  item.keepAliveInternal()
+
+  return prevLifeSpan
 }
 
 // LifeSpan returns this item's expiration duration.

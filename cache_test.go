@@ -168,6 +168,42 @@ func TestCacheKeepAlive(t *testing.T) {
 	}
 }
 
+func TestSetLifeSpan(t *testing.T) {
+	// add an expiring item
+  table := Cache("testSetLifeSpan")
+
+  lifeSpan := 200 * time.Millisecond
+	p := table.Add(k, lifeSpan, v)
+
+	// before it expires, change it's life span so that it never expires
+	time.Sleep(100 * time.Millisecond)
+  lifeSpanPrev := p.SetLifeSpan(0)
+  if p.LifeSpan() != 0 {
+    t.Error("Error setting new life span")
+  }
+  if lifeSpanPrev != lifeSpan {
+    t.Error("Error with previous life span")
+  }
+
+	// check it's still alive after it was initially supposed to expire
+	time.Sleep(150 * time.Millisecond)
+	if !table.Exists(k) {
+    t.Error("Error item expired with life span of 0")
+	}
+
+	// make it expire eventually
+  p.SetLifeSpan(lifeSpan)
+  if p.LifeSpan() != lifeSpan {
+    t.Error("Error resetting life span")
+  }
+  
+	// check it expires eventually
+	time.Sleep(250 * time.Millisecond)
+	if table.Exists(k) {
+		t.Errorf("Error expiring item after resetting it's life span")
+	}
+}
+
 func TestDelete(t *testing.T) {
 	// add an item to the cache
 	table := Cache("testDelete")
